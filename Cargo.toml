@@ -1,13 +1,20 @@
 [package]
 name = "prism"
+description = "An experimental chart library for iced."
+homepage = "https://github.com/kunerd/prism"
+repository = "https://github.com/kunerd/prism"
+readme = "README.md"
+license-file = "LICENSE"
+keywords = ["iced", "chart"]
 version = "0.1.0"
 edition = "2024"
-description = "An experimental chart library for iced."
 
 [dependencies]
 ordered-float = "1.0"
 
 [dependencies.iced]
-git = "https://github.com/iced-rs/iced.git"
-rev = "4b075b9731f4658a885357024cc77dee10e223c3"
+version = "0.14.0-dev"
 features = ["canvas", "advanced"]
+
+[patch.crates-io]
+iced = { git = "https://github.com/iced-rs/iced.git", rev = "4b075b9731f4658a885357024cc77dee10e223c3" }
