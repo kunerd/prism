@@ -279,8 +279,8 @@ where
                 // TODO use theme
                 color: self.x_labels.color.unwrap_or(iced::Color::WHITE),
                 // TODO edge case center tick
-                align_x: alignment::Horizontal::Center,
-                align_y: alignment::Vertical::Top,
+                horizontal_alignment: alignment::Horizontal::Center,
+                vertical_alignment: alignment::Vertical::Top,
                 font: Font::MONOSPACE,
                 ..canvas::Text::default()
             });
@@ -305,8 +305,8 @@ where
                 line_height: LineHeight::default(),
                 bounds: iced::Size::INFINITY,
                 font: Font::MONOSPACE,
-                align_x: iced::advanced::text::Alignment::Right,
-                align_y: alignment::Vertical::Center,
+                horizontal_alignment: alignment::Horizontal::Right,
+                vertical_alignment: alignment::Vertical::Center,
                 shaping: Shaping::Basic,
                 wrapping: Wrapping::default(),
             };
@@ -399,8 +399,8 @@ where
                 // TODO use theme
                 color: self.y_labels.color.unwrap_or(iced::Color::WHITE),
                 // TODO edge case center tick
-                align_x: alignment::Horizontal::Right,
-                align_y: alignment::Vertical::Center,
+                horizontal_alignment: alignment::Horizontal::Right,
+                vertical_alignment: alignment::Vertical::Center,
                 font: Font::MONOSPACE,
                 ..canvas::Text::default()
             });
@@ -557,19 +557,19 @@ where
         });
     }
 
-    fn update(
+    fn on_event(
         &mut self,
         tree: &mut Tree,
-        event: &iced::Event,
+        event: iced::Event,
         layout: Layout<'_>,
         cursor: mouse::Cursor,
         _renderer: &Renderer,
         _clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
         _viewport: &Rectangle,
-    ) {
+    ) -> iced::event::Status {
         let Some(cursor_position) = cursor.position() else {
-            return;
+            return iced::event::Status::Ignored;
         };
 
         let bounds = layout.bounds();
@@ -587,7 +587,7 @@ where
                 {
                     shell.publish(message(state));
 
-                    return;
+                    return iced::event::Status::Captured;
                 }
             }
 
@@ -597,7 +597,7 @@ where
                 {
                     shell.publish(message(state));
 
-                    return;
+                    return iced::event::Status::Captured;
                 }
             }
 
@@ -636,18 +636,22 @@ where
 
                     shell.publish(message(state));
 
-                    return;
+                    return iced::event::Status::Captured;
                 }
             }
 
             if let Some(message) = self.on_scroll.as_ref() {
                 if let iced::Event::Mouse(mouse::Event::WheelScrolled { delta }) = event {
-                    state.scroll_delta = Some(*delta);
+                    state.scroll_delta = Some(delta);
 
                     shell.publish(message(state));
+
+                    return iced::event::Status::Captured;
                 }
             }
         }
+
+        iced::event::Status::Ignored
     }
 
     fn mouse_interaction(
