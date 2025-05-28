@@ -11,10 +11,11 @@ use iced::{
 };
 
 fn main() -> Result<(), iced::Error> {
-    iced::application(App::title, App::update, App::view)
+    iced::application(App::new, App::update, App::view)
+        .title(App::title)
         .theme(App::theme)
         .antialiasing(true)
-        .run_with(App::new)
+        .run()
 }
 
 #[derive(Debug, Clone)]
@@ -151,12 +152,12 @@ impl App {
             .height(Length::Fill)
             .x_range(self.x_range.clone())
             .x_labels(Labels::default().format(&|v| format!("{v:.2}")))
-            .y_labels(Labels::default().format(&|v| format!("{v:.5}")))
-            .y_range(-2.0..=2.0)
-            .push_series(line_series(self.data.iter().copied()).color(palette.primary)) // .push_series(
-            .push_series(line_series(&self.data_1).color(palette.success))
+            .y_labels(Labels::default().format(&|v| format!("{v:.2}")))
+            .y_range(-1500.0..=1500.0)
+            // .push_series(line_series(self.data.iter().copied()).color(palette.primary)) // .push_series(
+            // .push_series(line_series(&self.data_1).color(palette.success))
             .push_series(
-                point_series(self.data.iter().copied().map(|(x, y)| (x, y * 1.5)))
+                point_series(self.data.iter().copied().map(|(x, y)| (x, y * 1000.5)))
                     .x(&|item| item.0)
                     .y(&|item| item.1)
                     .color(palette.danger),
@@ -165,7 +166,9 @@ impl App {
             .on_release(|state| Message::MouseUp(state.get_offset()))
             .on_move(|state| Message::OnMove(state.get_offset()));
 
-        column![top, row![left, chart, right], bottom].into()
+        column![top, row![left, chart, right].spacing(10), bottom]
+            .spacing(10)
+            .into()
     }
 
     pub fn theme(&self) -> Theme {

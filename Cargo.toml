@@ -6,7 +6,7 @@ repository = "https://github.com/kunerd/prism"
 readme = "README.md"
 license-file = "LICENSE"
 keywords = ["iced", "chart"]
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 
 [dependencies]
@@ -17,4 +17,4 @@ version = "0.14.0-dev"
 features = ["canvas", "advanced"]
 
 [patch.crates-io]
-iced = { git = "https://github.com/iced-rs/iced.git", rev = "4b075b9731f4658a885357024cc77dee10e223c3" }
+iced = { git = "https://github.com/iced-rs/iced.git", branch = "master" }

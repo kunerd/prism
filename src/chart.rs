@@ -2,6 +2,7 @@ mod axis;
 mod cartesian;
 mod items;
 pub mod series;
+pub use series::{line_series, point_series};
 
 use axis::Axis;
 pub use axis::Labels;
@@ -279,7 +280,7 @@ where
                 // TODO use theme
                 color: self.x_labels.color.unwrap_or(iced::Color::WHITE),
                 // TODO edge case center tick
-                align_x: alignment::Horizontal::Center,
+                align_x: iced::widget::text::Alignment::Center,
                 align_y: alignment::Vertical::Top,
                 font: Font::MONOSPACE,
                 ..canvas::Text::default()
@@ -307,7 +308,7 @@ where
                 font: Font::MONOSPACE,
                 align_x: iced::advanced::text::Alignment::Right,
                 align_y: alignment::Vertical::Center,
-                shaping: Shaping::Basic,
+                shaping: Shaping::Advanced,
                 wrapping: Wrapping::default(),
             };
 
@@ -319,25 +320,31 @@ where
         let tick_width = plane.y.length / self.y_ticks.amount as f32;
         let down = (plane.y.min / tick_width).ceil() as i32;
         for i in down..0 {
-            let y = plane.scale_to_cartesian_y(i as f32);
+            let y = i as f32 * tick_width;
+
             let label = self
                 .y_labels
                 .format
                 .map_or_else(|| format!("{y}"), |fmt| fmt(&y));
+
             let font_size = self.y_labels.font_size.unwrap_or(12.into());
             let label_width = text_width(&label, font_size);
+
             max_label_width = max_label_width.max(label_width);
         }
 
         let up = (plane.y.max / tick_width).floor() as i32;
         for i in 1..=up {
-            let y = plane.scale_to_cartesian_y(i as f32);
+            let y = i as f32 * tick_width;
+
             let label = self
                 .y_labels
                 .format
                 .map_or_else(|| format!("{y}"), |fmt| fmt(&y));
+
             let font_size = self.y_labels.font_size.unwrap_or(12.into());
             let label_width = text_width(&label, font_size);
+
             max_label_width = max_label_width.max(label_width);
         }
         let bounds = frame.size();
@@ -393,13 +400,13 @@ where
                 size: font_size,
                 position: Point {
                     // TODO remove magic number,
-                    x: x_scaled - 8.0,
+                    x: x_scaled,
                     y: y_scaled,
                 },
                 // TODO use theme
                 color: self.y_labels.color.unwrap_or(iced::Color::WHITE),
                 // TODO edge case center tick
-                align_x: alignment::Horizontal::Right,
+                align_x: iced::widget::text::Alignment::Right,
                 align_y: alignment::Vertical::Center,
                 font: Font::MONOSPACE,
                 ..canvas::Text::default()
@@ -410,7 +417,7 @@ where
             draw_y_tick(i as f32 * tick_width);
         }
 
-        let up = (plane.y.max / tick_width).floor() as i32;
+        // let up = (plane.y.max / tick_width).floor() as i32;
         for i in 1..=up {
             draw_y_tick(i as f32 * tick_width);
         }
