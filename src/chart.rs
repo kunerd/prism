@@ -41,8 +41,8 @@ where
 
     margin: Margin,
 
-    x_axis: Axis,
-    y_axis: Axis,
+    x_axis: Axis<'a>,
+    y_axis: Axis<'a>,
 
     x_ticks: Tick,
     y_ticks: Tick,
@@ -150,12 +150,12 @@ where
         self
     }
 
-    pub fn x_axis(mut self, axis: Axis) -> Self {
+    pub fn x_axis(mut self, axis: Axis<'a>) -> Self {
         self.x_axis = axis;
         self
     }
 
-    pub fn y_axis(mut self, axis: Axis) -> Self {
+    pub fn y_axis(mut self, axis: Axis<'a>) -> Self {
         self.y_axis = axis;
         self
     }
@@ -219,83 +219,6 @@ where
     pub fn on_scroll(mut self, msg: impl Fn(&State<Id>) -> Message + 'a) -> Self {
         self.on_scroll = Some(Box::new(msg));
         self
-    }
-
-    fn draw_x_axis(&self, frame: &mut canvas::Frame, plane: &Plane) {
-        let bounds = frame.size();
-
-        let mut scaled_bottom_left = plane.scale_to_cartesian(plane.bottom_left());
-        let mut scaled_bottom_right = plane.scale_to_cartesian(plane.bottom_right());
-
-        let label_height = 10.0;
-        if scaled_bottom_left.x > bounds.height - label_height {
-            // TODO minus label height
-            scaled_bottom_left.x = bounds.width - label_height;
-            scaled_bottom_right.x = bounds.width - label_height;
-        }
-
-        frame.stroke(
-            &Path::line(scaled_bottom_left, scaled_bottom_right),
-            Stroke::default()
-                .with_width(self.x_axis.width)
-                .with_color(self.x_axis.color),
-        );
-
-        // ticks
-        let tick_width = plane.x.length / self.x_ticks.amount as f32;
-        let mut draw_x_tick = |x| {
-            let x_scaled = plane.scale_to_cartesian_x(x);
-            let y_scaled = plane.scale_to_cartesian_y(0.0);
-
-            let half_tick_height = self.x_ticks.height / 2.0;
-            let x_start = Point {
-                x: x_scaled,
-                y: y_scaled - half_tick_height,
-            };
-            let x_end = Point {
-                x: x_scaled,
-                y: y_scaled + half_tick_height,
-            };
-
-            frame.stroke(
-                &Path::line(x_start, x_end),
-                Stroke::default()
-                    .with_width(self.x_ticks.width)
-                    .with_color(self.x_ticks.color),
-            );
-
-            let label = self
-                .x_labels
-                .format
-                .map_or_else(|| format!("{x}"), |fmt| fmt(&x));
-
-            frame.fill_text(canvas::Text {
-                content: label,
-                size: self.x_labels.font_size.unwrap_or(12.into()),
-                position: Point {
-                    x: x_scaled,
-                    // TODO remove magic number,
-                    y: y_scaled + 8.0,
-                },
-                // TODO use theme
-                color: self.x_labels.color.unwrap_or(iced::Color::WHITE),
-                // TODO edge case center tick
-                align_x: iced::widget::text::Alignment::Center,
-                align_y: alignment::Vertical::Top,
-                font: Font::MONOSPACE,
-                ..canvas::Text::default()
-            });
-        };
-
-        let left = (plane.x.min / tick_width).ceil() as i32;
-        for i in left..0 {
-            draw_x_tick(i as f32 * tick_width);
-        }
-
-        let right = (plane.x.max / tick_width).floor() as i32;
-        for i in 0..=right {
-            draw_x_tick(i as f32 * tick_width);
-        }
     }
 
     fn draw_y_axis(&self, frame: &mut canvas::Frame, plane: &Plane) {
@@ -555,7 +478,7 @@ where
 
         let geometry = self.cache.draw(renderer, bounds.size(), |frame| {
             self.draw_data(frame, plane);
-            self.draw_x_axis(frame, plane);
+            self.x_axis.draw(frame, plane);
             self.draw_y_axis(frame, plane);
         });
 
