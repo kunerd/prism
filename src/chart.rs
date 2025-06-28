@@ -15,15 +15,13 @@ use cartesian::Plane;
 use iced::Point;
 use iced::advanced::Renderer as _;
 use iced::advanced::graphics::geometry::Renderer as _;
-use iced::advanced::graphics::text::Paragraph;
-use iced::advanced::text::Paragraph as _;
 use iced::advanced::widget::{Tree, tree};
 use iced::advanced::{Clipboard, Layout, Shell, Widget, layout, mouse, renderer};
 use iced::mouse::ScrollDelta;
-use iced::widget::canvas::{self, Path, Stroke};
-use iced::widget::text::{LineHeight, Shaping, Wrapping};
+use iced::widget::canvas::{self};
+use iced::widget::text::Shaping;
 use iced::{Element, Length, Rectangle, Size, mouse::Cursor};
-use iced::{Font, Renderer, Vector, alignment, touch};
+use iced::{Renderer, Vector, touch};
 
 use std::marker::PhantomData;
 use std::ops::RangeInclusive;
@@ -46,9 +44,6 @@ where
 
     x_ticks: Tick,
     y_ticks: Tick,
-
-    x_labels: Labels<'a>,
-    y_labels: Labels<'a>,
 
     x_range: Option<RangeInclusive<f32>>,
     y_range: Option<RangeInclusive<f32>>,
@@ -91,14 +86,11 @@ where
 
             margin: Margin::default(),
 
-            x_axis: Axis::default(),
-            y_axis: Axis::default(),
+            x_axis: Axis::new(axis::Alignment::Horizontal),
+            y_axis: Axis::new(axis::Alignment::Vertical),
 
             x_ticks: Tick::default(),
             y_ticks: Tick::default(),
-
-            x_labels: Labels::default(),
-            y_labels: Labels::default(),
 
             x_range: None,
             y_range: None,
@@ -176,12 +168,12 @@ where
     }
 
     pub fn x_labels(mut self, labels: Labels<'a>) -> Self {
-        self.x_labels = labels;
+        self.x_axis.labels(labels);
         self
     }
 
     pub fn y_labels(mut self, labels: Labels<'a>) -> Self {
-        self.y_labels = labels;
+        self.y_axis.labels(labels);
         self
     }
 
@@ -219,131 +211,6 @@ where
     pub fn on_scroll(mut self, msg: impl Fn(&State<Id>) -> Message + 'a) -> Self {
         self.on_scroll = Some(Box::new(msg));
         self
-    }
-
-    fn draw_y_axis(&self, frame: &mut canvas::Frame, plane: &Plane) {
-        let text_width = |text: &str, font_size| {
-            let text = iced::advanced::text::Text {
-                content: text,
-                size: font_size,
-                line_height: LineHeight::default(),
-                bounds: iced::Size::INFINITY,
-                font: Font::MONOSPACE,
-                align_x: iced::advanced::text::Alignment::Right,
-                align_y: alignment::Vertical::Center,
-                shaping: Shaping::Advanced,
-                wrapping: Wrapping::default(),
-            };
-
-            let paragraph = Paragraph::with_text(text);
-            paragraph.min_bounds().width
-        };
-
-        let mut max_label_width = 0.0f32;
-        let tick_width = plane.y.length / self.y_ticks.amount as f32;
-        let down = (plane.y.min / tick_width).ceil() as i32;
-        for i in down..0 {
-            let y = i as f32 * tick_width;
-
-            let label = self
-                .y_labels
-                .format
-                .map_or_else(|| format!("{y}"), |fmt| fmt(&y));
-
-            let font_size = self.y_labels.font_size.unwrap_or(12.into());
-            let label_width = text_width(&label, font_size);
-
-            max_label_width = max_label_width.max(label_width);
-        }
-
-        let up = (plane.y.max / tick_width).floor() as i32;
-        for i in 1..=up {
-            let y = i as f32 * tick_width;
-
-            let label = self
-                .y_labels
-                .format
-                .map_or_else(|| format!("{y}"), |fmt| fmt(&y));
-
-            let font_size = self.y_labels.font_size.unwrap_or(12.into());
-            let label_width = text_width(&label, font_size);
-
-            max_label_width = max_label_width.max(label_width);
-        }
-        let bounds = frame.size();
-
-        let mut scaled_bottom_center = plane.scale_to_cartesian(plane.bottom_center());
-        let mut scaled_top_center = plane.scale_to_cartesian(plane.top_center());
-
-        if scaled_bottom_center.x - max_label_width <= 0.0 {
-            // TODO minus label height
-            scaled_bottom_center.x = max_label_width;
-            scaled_top_center.x = max_label_width;
-        } else if scaled_bottom_center.x > bounds.width {
-            scaled_bottom_center.x = bounds.width;
-            scaled_top_center.x = bounds.width;
-        }
-
-        frame.stroke(
-            &Path::line(scaled_bottom_center, scaled_top_center),
-            Stroke::default()
-                .with_width(self.y_axis.width)
-                .with_color(self.y_axis.color),
-        );
-
-        let mut draw_y_tick = |y| {
-            let x_scaled = scaled_top_center.x;
-            let y_scaled = plane.scale_to_cartesian_y(y);
-
-            let half_tick_height = self.y_ticks.height / 2.0;
-            let start = Point {
-                x: x_scaled - half_tick_height,
-                y: y_scaled,
-            };
-            let end = Point {
-                x: x_scaled + half_tick_height,
-                y: y_scaled,
-            };
-
-            frame.stroke(
-                &Path::line(start, end), //.transform(&Transform2D::new(1.0, 0.0, 0.0, -1.0, 0.0, 0.0)),
-                Stroke::default()
-                    .with_width(self.y_ticks.width)
-                    .with_color(self.y_ticks.color),
-            );
-
-            let label = self
-                .y_labels
-                .format
-                .map_or_else(|| format!("{y}"), |fmt| fmt(&y));
-
-            let font_size = self.y_labels.font_size.unwrap_or(12.into());
-            frame.fill_text(canvas::Text {
-                content: label.clone(),
-                size: font_size,
-                position: Point {
-                    // TODO remove magic number,
-                    x: x_scaled,
-                    y: y_scaled,
-                },
-                // TODO use theme
-                color: self.y_labels.color.unwrap_or(iced::Color::WHITE),
-                // TODO edge case center tick
-                align_x: iced::widget::text::Alignment::Right,
-                align_y: alignment::Vertical::Center,
-                font: Font::MONOSPACE,
-                ..canvas::Text::default()
-            });
-        };
-
-        for i in down..0 {
-            draw_y_tick(i as f32 * tick_width);
-        }
-
-        // let up = (plane.y.max / tick_width).floor() as i32;
-        for i in 1..=up {
-            draw_y_tick(i as f32 * tick_width);
-        }
     }
 
     fn draw_data(&self, frame: &mut canvas::Frame, plane: &Plane) {
@@ -479,7 +346,7 @@ where
         let geometry = self.cache.draw(renderer, bounds.size(), |frame| {
             self.draw_data(frame, plane);
             self.x_axis.draw(frame, plane);
-            self.draw_y_axis(frame, plane);
+            self.y_axis.draw(frame, plane);
         });
 
         renderer.with_translation(Vector::new(bounds.x, bounds.y), |renderer| {

@@ -151,13 +151,13 @@ impl App {
             .width(Length::Fill)
             .height(Length::Fill)
             .x_range(self.x_range.clone())
+            .y_range(-1.0..=3.0)
             .x_labels(Labels::default().format(&|v| format!("{v:.2}")))
             .y_labels(Labels::default().format(&|v| format!("{v:.2}")))
-            .y_range(-1500.0..=1500.0)
-            // .push_series(line_series(self.data.iter().copied()).color(palette.primary)) // .push_series(
-            // .push_series(line_series(&self.data_1).color(palette.success))
+            .push_series(line_series(self.data.iter().copied()).color(palette.primary)) // .push_series(
+            .push_series(line_series(&self.data_1).color(palette.success))
             .push_series(
-                point_series(self.data.iter().copied().map(|(x, y)| (x, y * 1000.5)))
+                point_series(self.data.iter().copied().map(|(x, y)| (x, y)))
                     .x(&|item| item.0)
                     .y(&|item| item.1)
                     .color(palette.danger),
