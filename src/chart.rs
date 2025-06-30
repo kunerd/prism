@@ -1,12 +1,14 @@
-mod axis;
+pub mod axis;
 mod cartesian;
 mod items;
+
 pub mod series;
 pub use series::{line_series, point_series};
 
-use axis::Axis;
+pub use axis::Axis;
 pub use axis::Labels;
-use axis::Tick;
+
+use axis::Ticks;
 use items::Items;
 
 use core::f32;
@@ -42,8 +44,8 @@ where
     x_axis: Axis<'a>,
     y_axis: Axis<'a>,
 
-    x_ticks: Tick,
-    y_ticks: Tick,
+    x_ticks: Ticks,
+    y_ticks: Ticks,
 
     x_range: Option<RangeInclusive<f32>>,
     y_range: Option<RangeInclusive<f32>>,
@@ -89,8 +91,8 @@ where
             x_axis: Axis::new(axis::Alignment::Horizontal),
             y_axis: Axis::new(axis::Alignment::Vertical),
 
-            x_ticks: Tick::default(),
-            y_ticks: Tick::default(),
+            x_ticks: Ticks::default(),
+            y_ticks: Ticks::default(),
 
             x_range: None,
             y_range: None,
@@ -157,12 +159,12 @@ where
         self
     }
 
-    pub fn x_ticks(mut self, ticks: Tick) -> Self {
+    pub fn x_ticks(mut self, ticks: Ticks) -> Self {
         self.x_ticks = ticks;
         self
     }
 
-    pub fn y_ticks(mut self, ticks: Tick) -> Self {
+    pub fn y_ticks(mut self, ticks: Ticks) -> Self {
         self.y_ticks = ticks;
         self
     }

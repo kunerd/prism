@@ -6,10 +6,11 @@ use prism::chart::{
 use iced::{Element, Length, Task, Theme, widget::container};
 
 fn main() -> Result<(), iced::Error> {
-    iced::application(App::title, App::update, App::view)
+    iced::application(App::new, App::update, App::view)
+        .title(App::title)
         .theme(App::theme)
         .antialiasing(true)
-        .run_with(App::new)
+        .run()
 }
 
 #[derive(Debug, Clone)]

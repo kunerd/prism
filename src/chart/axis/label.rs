@@ -1,42 +1,77 @@
-#[derive(Default)]
-pub struct Labels<'a> {
-    pub color: Option<iced::Color>,
-    pub font_size: Option<iced::Pixels>,
-    pub format: Option<&'a dyn Fn(&f32) -> String>, // TODO:
-                                                    // alignment
-                                                    // limits
-                                                    // uppercase    -- Make labels uppercase
-                                                    // rotate 90    -- Rotate labels
+use iced::{
+    Font, Pixels,
+    advanced::{
+        graphics::text::Paragraph,
+        text::{self, Paragraph as _},
+    },
+    alignment,
+    widget::{
+        canvas::{self, Frame},
+        text::{Fragment, IntoFragment},
+    },
+};
 
-                                                    // CA.alignRight   -- Anchor labels to the right
-                                                    // CA.alignLeft    -- Anchor labels to the left
+use super::{Alignment, Labels};
 
-                                                    // CA.moveUp 5     -- Move 5 SVG units up
-                                                    // CA.moveDown 5   -- Move 5 SVG units down
-                                                    // CA.moveLeft 5   -- Move 5 SVG units left
-                                                    // CA.moveRight 5  -- Move 5 SVG units right
-
-                                                    // CA.amount 15   -- Change amount of ticks
-                                                    // , CA.flip        -- Flip to opposite direction
-                                                    // CA.withGrid    -- Add grid line by each label.
-
-                                                    // CA.ints            -- Add ticks at "nice" ints
-                                                    // CA.times Time.utc  -- Add ticks at "nice" times
+pub(crate) struct Label<'a> {
+    content: Fragment<'a>,
+    bounds: iced::Size,
 }
 
-impl<'a> Labels<'a> {
-    pub fn color(mut self, color: iced::Color) -> Self {
-        self.color = Some(color);
-        self
+impl<'a> Label<'a> {
+    pub(crate) fn new(content: impl IntoFragment<'a>, font_size: impl Into<Pixels>) -> Self {
+        let content = content.into_fragment();
+        let bounds = min_bounds(content.as_ref(), font_size.into());
+
+        Self { content, bounds }
     }
 
-    pub fn font_size(mut self, font_size: impl Into<iced::Pixels>) -> Self {
-        self.font_size = Some(font_size.into());
-        self
+    pub(crate) fn min_width(&self) -> f32 {
+        self.bounds.width
     }
 
-    pub fn format(mut self, format: &'a dyn Fn(&f32) -> String) -> Self {
-        self.format = Some(format);
-        self
+    pub(crate) fn min_height(&self) -> f32 {
+        self.bounds.height
     }
+
+    pub(crate) fn draw(
+        &self,
+        frame: &mut Frame,
+        pos: iced::Point,
+        alignment: Alignment,
+        config: &Labels,
+    ) {
+        let (align_x, align_y) = match alignment {
+            Alignment::Horizontal => (text::Alignment::Center, alignment::Vertical::Top),
+            Alignment::Vertical => (text::Alignment::Right, alignment::Vertical::Center),
+        };
+
+        frame.fill_text(canvas::Text {
+            content: self.content.to_string(),
+            size: config.font_size.unwrap_or(12.into()),
+            position: pos,
+            color: config.color.unwrap_or(iced::Color::WHITE),
+            align_x,
+            align_y,
+            font: Font::MONOSPACE,
+            ..canvas::Text::default()
+        });
+    }
+}
+
+fn min_bounds(content: &str, font_size: Pixels) -> iced::Size {
+    let text = iced::advanced::text::Text {
+        content,
+        size: font_size,
+        line_height: text::LineHeight::default(),
+        bounds: iced::Size::INFINITY,
+        font: Font::MONOSPACE,
+        align_x: iced::advanced::text::Alignment::Right,
+        align_y: alignment::Vertical::Center,
+        shaping: text::Shaping::Advanced,
+        wrapping: text::Wrapping::default(),
+    };
+
+    let paragraph = Paragraph::with_text(text);
+    paragraph.min_bounds()
 }

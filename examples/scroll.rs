@@ -27,8 +27,8 @@ enum Message {
 
 #[derive(Debug)]
 struct App {
-    x_offset: f32,
     x_range: RangeInclusive<f32>,
+    y_range: RangeInclusive<f32>,
     data: Vec<(f32, f32)>,
     data_1: Vec<Entry>,
     dragging: Dragging,
@@ -66,7 +66,7 @@ impl App {
                 data,
                 data_1,
                 x_range: -4.0..=4.0,
-                x_offset: 0.0,
+                y_range: -4.0..=4.0,
                 dragging: Dragging::None,
             },
             Task::none(),
@@ -78,15 +78,19 @@ impl App {
     }
 
     pub fn update(&mut self, msg: Message) -> Task<Message> {
-        let mut update_center = |prev_pos: iced::Point, pos: iced::Point| {
-            let shift_x = prev_pos.x - pos.x;
+        let new_range = |old_range: RangeInclusive<f32>, shift| {
+            let new_start = old_range.start() + shift;
+            let new_end = old_range.end() + shift;
 
-            let new_start = self.x_range.start() + shift_x;
-            let new_end = self.x_range.end() + shift_x;
-
-            self.x_range = new_start..=new_end;
-            self.x_offset += shift_x;
+            new_start..=new_end
         };
+
+        let mut update_center = |prev_pos: iced::Point, pos: iced::Point| {
+            let shift = prev_pos - pos;
+            self.x_range = new_range(self.x_range.clone(), shift.x);
+            self.y_range = new_range(self.y_range.clone(), shift.y);
+        };
+
         match msg {
             Message::MouseDown(pos) => {
                 let Dragging::None = self.dragging else {
@@ -99,7 +103,6 @@ impl App {
             }
             Message::OnMove(pos) => {
                 let Some(pos) = pos else {
-                    dbg!("no pos: {:?}", &msg);
                     return Task::none();
                 };
 
@@ -121,7 +124,6 @@ impl App {
             }
             Message::MouseUp(pos) => {
                 let Some(pos) = pos else {
-                    dbg!("no pos: {:?}", &msg);
                     return Task::none();
                 };
                 match self.dragging {
@@ -151,7 +153,7 @@ impl App {
             .width(Length::Fill)
             .height(Length::Fill)
             .x_range(self.x_range.clone())
-            .y_range(-1.0..=3.0)
+            .y_range(self.y_range.clone())
             .x_labels(Labels::default().format(&|v| format!("{v:.2}")))
             .y_labels(Labels::default().format(&|v| format!("{v:.2}")))
             .push_series(line_series(self.data.iter().copied()).color(palette.primary)) // .push_series(

@@ -1,37 +1,46 @@
 mod label;
+mod labels;
 mod tick;
+mod ticks;
 
-pub use label::Labels;
-pub use tick::Tick;
+use label::Label;
+pub use labels::Labels;
+use tick::Tick;
+pub use ticks::Ticks;
 
 use super::cartesian::Plane;
 
-use iced::{
-    Font, Point, alignment,
-    widget::canvas::{self, Path, Stroke},
-};
+use iced::widget::canvas::{self, Path, Stroke};
 
 pub struct Axis<'a> {
+    scale: Scale,
     alignment: Alignment,
     color: iced::Color,
     width: f32,
-    label: Labels<'a>,
-    tick: Tick,
+    labels: Labels<'a>,
+    ticks: Ticks,
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum Alignment {
     Horizontal,
     Vertical,
 }
 
+pub enum Scale {
+    Linear,
+    Log,
+}
+
 impl<'a> Axis<'a> {
     pub fn new(alignment: Alignment) -> Self {
         Self {
+            scale: Scale::Linear,
             alignment,
             color: iced::Color::WHITE,
             width: 1.0,
-            label: Labels::default(),
-            tick: Tick::default(),
+            labels: Labels::default(),
+            ticks: Ticks::default(),
         }
     }
     pub fn color(mut self, color: iced::Color) -> Self {
@@ -44,22 +53,92 @@ impl<'a> Axis<'a> {
         self
     }
 
+    pub fn scale(mut self, scale: Scale) -> Self {
+        self.scale = scale;
+        self
+    }
+
     pub(super) fn draw(&self, frame: &mut canvas::Frame, plane: &Plane) {
+        let bounds = frame.size();
+
         let (start, end) = match self.alignment {
             Alignment::Horizontal => (plane.bottom_left(), plane.bottom_right()),
             Alignment::Vertical => (plane.bottom_center(), plane.top_center()),
         };
 
-        // TODO: fix clamping
-        // let bounds = frame.size();
-        // let label_height = 10.0;
-        // if scaled_bottom_left.x > bounds.height - label_height {
-        //     scaled_bottom_left.x = bounds.width - label_height;
-        //     scaled_bottom_right.x = bounds.width - label_height;
-        // }
+        let mut start = plane.scale_to_cartesian(start);
+        let mut end = plane.scale_to_cartesian(end);
 
-        let start = plane.scale_to_cartesian(start);
-        let end = plane.scale_to_cartesian(end);
+        // ticks
+        let length = match self.alignment {
+            Alignment::Horizontal => plane.x.length,
+            Alignment::Vertical => plane.y.length,
+        };
+        let axis = match self.alignment {
+            Alignment::Horizontal => &plane.x,
+            Alignment::Vertical => &plane.y,
+        };
+
+        let tick_distance = length / self.ticks.amount as f32;
+        let start_tick = (axis.min / tick_distance).ceil() as i32;
+        let end_tick = (axis.max / tick_distance).floor() as i32;
+        let (pos, labels): (Vec<_>, Vec<_>) = (start_tick..0)
+            .into_iter()
+            .chain(1..=end_tick)
+            .map(|i| {
+                let pos = match self.scale {
+                    Scale::Linear => i as f32 * tick_distance,
+                    Scale::Log => (self.ticks.amount as f32).powf(i as f32 / axis.max - 1.0),
+                };
+
+                let content = self
+                    .labels
+                    .format
+                    .map_or_else(|| format!("{}", pos), |fmt| fmt(&pos));
+
+                let label = Label::new(
+                    content,
+                    self.labels
+                        .font_size
+                        .unwrap_or_else(|| Labels::DEFAULT_FONT_SIZE.into()),
+                );
+
+                (pos, label)
+            })
+            .collect();
+
+        let max_label_width = labels
+            .iter()
+            .max_by(|acc, e| acc.min_width().total_cmp(&e.min_width()))
+            .unwrap();
+        let max_label_width = max_label_width.min_width();
+
+        let max_label_height = labels
+            .iter()
+            .max_by(|acc, e| acc.min_height().total_cmp(&e.min_height()))
+            .unwrap();
+        let max_label_height = max_label_height.min_height();
+
+        match self.alignment {
+            Alignment::Horizontal => {
+                if start.y <= 0.0 + self.ticks.length {
+                    start.y = self.ticks.length;
+                    end.y = self.ticks.length;
+                } else if start.y >= bounds.height - max_label_height {
+                    start.y = bounds.height - max_label_height;
+                    end.y = bounds.height - max_label_height;
+                }
+            }
+            Alignment::Vertical => {
+                if start.x - max_label_width <= 0.0 {
+                    start.x = max_label_width + self.width;
+                    end.x = max_label_width + self.width;
+                } else if start.x >= bounds.width - self.ticks.length {
+                    start.x = bounds.width - self.ticks.length;
+                    end.x = bounds.width - self.ticks.length;
+                }
+            }
+        }
 
         frame.stroke(
             &Path::line(start, end),
@@ -68,85 +147,18 @@ impl<'a> Axis<'a> {
                 .with_color(self.color),
         );
 
-        // ticks
-        let length = match self.alignment {
-            Alignment::Horizontal => plane.x.length,
-            Alignment::Vertical => plane.y.length,
-        };
-
-        let tick_distance = length / self.tick.amount as f32;
-
-        let mut draw_tick = |x, y| {
-            let x_scaled = plane.scale_to_cartesian_x(x);
-            let y_scaled = plane.scale_to_cartesian_y(y);
-
-            let half_tick_height = self.tick.height / 2.0;
-            let x_start = Point {
-                x: x_scaled,
-                y: y_scaled - half_tick_height,
-            };
-            let x_end = Point {
-                x: x_scaled,
-                y: y_scaled + half_tick_height,
+        pos.into_iter().zip(labels).for_each(|(pos, label)| {
+            let pos = match self.alignment {
+                Alignment::Horizontal => iced::Point::new(plane.scale_to_cartesian_x(pos), start.y),
+                Alignment::Vertical => iced::Point::new(start.x, plane.scale_to_cartesian_y(pos)),
             };
 
-            frame.stroke(
-                &Path::line(x_start, x_end),
-                Stroke::default()
-                    .with_width(self.tick.width)
-                    .with_color(self.tick.color),
-            );
-
-            let label = match self.alignment {
-                Alignment::Horizontal => x,
-                Alignment::Vertical => y,
-            };
-
-            let label = self
-                .label
-                .format
-                .map_or_else(|| format!("{}", label), |fmt| fmt(&label));
-
-            frame.fill_text(canvas::Text {
-                content: label,
-                size: self.label.font_size.unwrap_or(12.into()),
-                position: Point {
-                    x: x_scaled,
-                    y: y_scaled,
-                },
-                // TODO use theme
-                color: self.label.color.unwrap_or(iced::Color::WHITE),
-                // TODO edge case center tick
-                align_x: iced::widget::text::Alignment::Center,
-                align_y: alignment::Vertical::Top,
-                font: Font::MONOSPACE,
-                ..canvas::Text::default()
-            });
-        };
-
-        let axis = match self.alignment {
-            Alignment::Horizontal => &plane.x,
-            Alignment::Vertical => &plane.y,
-        };
-
-        let start = (axis.min / tick_distance).ceil() as i32;
-        for i in start..0 {
-            match self.alignment {
-                Alignment::Horizontal => draw_tick(i as f32 * tick_distance, 0.0),
-                Alignment::Vertical => draw_tick(0.0, i as f32 * tick_distance),
-            }
-        }
-
-        let end = (axis.max / tick_distance).floor() as i32;
-        for i in 0..=end {
-            match self.alignment {
-                Alignment::Horizontal => draw_tick(i as f32 * tick_distance, 0.0),
-                Alignment::Vertical => draw_tick(0.0, i as f32 * tick_distance),
-            }
-        }
+            Tick::new(pos).draw(frame, self.alignment, &self.ticks);
+            label.draw(frame, pos, self.alignment, &self.labels);
+        });
     }
 
     pub(crate) fn labels(&mut self, labels: Labels<'a>) {
-        self.label = labels;
+        self.labels = labels;
     }
 }
