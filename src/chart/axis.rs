@@ -101,17 +101,6 @@ impl<'a> Axis<'a> {
         let (pos, labels): (Vec<_>, Vec<_>) = tick_positions
             .into_iter()
             .map(|position| {
-                let position = match self.scale {
-                    Scale::Linear => position,
-                    Scale::Log => {
-                        if position == 0.0 {
-                            0.0
-                        } else {
-                            (position.log10() / axis.max.log10()) * axis.max
-                        }
-                    }
-                };
-
                 let content = self
                     .labels
                     .format
@@ -123,6 +112,17 @@ impl<'a> Axis<'a> {
                         .font_size
                         .unwrap_or_else(|| Labels::DEFAULT_FONT_SIZE.into()),
                 );
+
+                let position = match self.scale {
+                    Scale::Linear => position,
+                    Scale::Log => {
+                        if position == 0.0 {
+                            0.0
+                        } else {
+                            (position.log10() / axis.max.log10()) * axis.max
+                        }
+                    }
+                };
 
                 (position, label)
             })
