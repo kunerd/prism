@@ -4,14 +4,18 @@ pub mod point;
 pub use line::LineSeries;
 pub use point::PointSeries;
 
-use super::{cartesian::Plane, items};
+use super::{
+    axis::{self},
+    cartesian::Plane,
+    items,
+};
 
 use iced::widget::canvas::{self};
 
 use std::ops::RangeInclusive;
 
 pub trait Series<SeriesId, ItemId = usize> {
-    fn draw(&self, frame: &mut canvas::Frame, plane: &Plane);
+    fn draw(&self, frame: &mut canvas::Frame, plane: &Plane, x_scale: &axis::Scale);
     fn id(&self) -> Option<SeriesId> {
         None
     }

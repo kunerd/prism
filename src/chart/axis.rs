@@ -13,7 +13,7 @@ use super::cartesian::Plane;
 use iced::widget::canvas::{self, Path, Stroke};
 
 pub struct Axis<'a> {
-    scale: Scale,
+    pub scale: Scale,
     alignment: Alignment,
     color: iced::Color,
     width: f32,
@@ -28,6 +28,7 @@ pub enum Alignment {
     Vertical,
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum Scale {
     Linear,
     Log,

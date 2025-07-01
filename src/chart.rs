@@ -55,7 +55,7 @@ where
     items: Items<Id, usize>,
 
     series: Vec<Box<dyn series::Series<Id> + 'a>>,
-    cache: canvas::Cache,
+    cache: Cache<'a>,
 
     on_move: Option<StateFn<'a, Message, Id>>,
     on_press: Option<StateFn<'a, Message, Id>>,
@@ -70,6 +70,11 @@ where
     //on_exit: Option<Message>,
     //interaction: Option<mouse::Interaction>,
     theme_: PhantomData<Theme>,
+}
+
+enum Cache<'a> {
+    User(&'a canvas::Cache),
+    Fallback(canvas::Cache),
 }
 
 impl<'a, Message, Id, Theme> Chart<'a, Message, Id, Theme>
@@ -102,7 +107,7 @@ where
             items: Items::default(),
 
             series: Vec::new(),
-            cache: canvas::Cache::new(),
+            cache: Cache::Fallback(canvas::Cache::new()),
             on_move: None,
             on_press: None,
             on_release: None,
@@ -179,6 +184,11 @@ where
         self
     }
 
+    pub fn cache(mut self, cache: &'a canvas::Cache) -> Self {
+        self.cache = Cache::User(cache);
+        self
+    }
+
     pub fn push_series(mut self, series: impl series::Series<Id> + 'a) -> Self {
         if let Some((id, items)) = series.items() {
             self.items.add_series(id, &items);
@@ -217,7 +227,7 @@ where
 
     fn draw_data(&self, frame: &mut canvas::Frame, plane: &Plane) {
         for series in &self.series {
-            series.draw(frame, plane);
+            series.draw(frame, plane, &self.x_axis.scale);
         }
     }
 
@@ -345,7 +355,12 @@ where
             return;
         };
 
-        let geometry = self.cache.draw(renderer, bounds.size(), |frame| {
+        let cache = match &self.cache {
+            Cache::User(cache) => cache,
+            Cache::Fallback(cache) => cache,
+        };
+
+        let geometry = cache.draw(renderer, bounds.size(), |frame| {
             self.draw_data(frame, plane);
             self.x_axis.draw(frame, plane);
             self.y_axis.draw(frame, plane);

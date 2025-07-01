@@ -5,7 +5,10 @@ use iced::{
     widget::canvas::{self, Path, Stroke},
 };
 
-use crate::chart::{cartesian::Plane, items};
+use crate::{
+    axis,
+    chart::{cartesian::Plane, items},
+};
 
 use super::Series;
 
@@ -95,7 +98,7 @@ where
     Data: IntoIterator<Item = Item> + Clone,
     Item: Into<(f32, f32)>,
 {
-    fn draw(&self, frame: &mut canvas::Frame, plane: &Plane) {
+    fn draw(&self, frame: &mut canvas::Frame, plane: &Plane, _x_scale: &axis::Scale) {
         for (index, item) in self.data.clone().into_iter().enumerate() {
             let style = self
                 .style_fn

@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use crate::chart::cartesian::Plane;
+use crate::{axis, chart::cartesian::Plane};
 
 use super::Series;
 
@@ -34,13 +34,16 @@ where
     Data: IntoIterator + Clone,
     Data::Item: Into<(f32, f32)>,
 {
-    fn draw(&self, frame: &mut canvas::Frame, plane: &Plane) {
+    fn draw(&self, frame: &mut canvas::Frame, plane: &Plane, x_scale: &axis::Scale) {
         frame.with_save(|frame| {
             frame.translate(Vector::new(plane.x.margin_min, plane.x.margin_min));
             frame.scale_nonuniform(Vector::new(plane.x.scale, plane.y.scale));
             frame.translate(Vector::new(-plane.x.min, plane.y.max));
 
-            let x_log = |p: f32| (p.log10() / plane.x.max.log10()) * plane.x.max;
+            let scale_fn: &dyn Fn(f32) -> f32 = match x_scale {
+                axis::Scale::Linear => &|p: f32| p,
+                axis::Scale::Log => &|p: f32| (p.log10() / plane.x.max.log10()) * plane.x.max,
+            };
 
             let mut iter = self
                 .data
@@ -48,17 +51,17 @@ where
                 .into_iter()
                 .map(Into::into)
                 .filter(|(x, y)| {
-                    x_log(*x) >= plane.x.min
-                        && x_log(*x) <= plane.x.max
+                    scale_fn(*x) >= plane.x.min
+                        && scale_fn(*x) <= plane.x.max
                         && y >= &plane.y.min
                         && y <= &plane.y.max
                 });
 
             let path = Path::new(|b| {
                 if let Some((x, y)) = iter.next() {
-                    b.move_to(Point { x: x_log(x), y });
+                    b.move_to(Point { x: scale_fn(x), y });
                     iter.fold(b, |acc, (x, y)| {
-                        acc.line_to(Point { x: x_log(x), y });
+                        acc.line_to(Point { x: scale_fn(x), y });
                         acc
                     });
                 }
