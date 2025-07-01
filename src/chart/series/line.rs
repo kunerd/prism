@@ -40,20 +40,25 @@ where
             frame.scale_nonuniform(Vector::new(plane.x.scale, plane.y.scale));
             frame.translate(Vector::new(-plane.x.min, plane.y.max));
 
+            let x_log = |p: f32| (p.log10() / plane.x.max.log10()) * plane.x.max;
+
             let mut iter = self
                 .data
                 .clone()
                 .into_iter()
                 .map(Into::into)
                 .filter(|(x, y)| {
-                    x >= &plane.x.min && x <= &plane.x.max && y >= &plane.y.min && y <= &plane.y.max
+                    x_log(*x) >= plane.x.min
+                        && x_log(*x) <= plane.x.max
+                        && y >= &plane.y.min
+                        && y <= &plane.y.max
                 });
 
             let path = Path::new(|b| {
-                if let Some(p) = iter.next() {
-                    b.move_to(Point { x: p.0, y: p.1 });
-                    iter.fold(b, |acc, p| {
-                        acc.line_to(Point { x: p.0, y: p.1 });
+                if let Some((x, y)) = iter.next() {
+                    b.move_to(Point { x: x_log(x), y });
+                    iter.fold(b, |acc, (x, y)| {
+                        acc.line_to(Point { x: x_log(x), y });
                         acc
                     });
                 }

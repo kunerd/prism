@@ -19,6 +19,7 @@ pub struct Axis<'a> {
     width: f32,
     labels: Labels<'a>,
     ticks: Ticks,
+    x_tick_marks: Vec<f32>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -41,6 +42,7 @@ impl<'a> Axis<'a> {
             width: 1.0,
             labels: Labels::default(),
             ticks: Ticks::default(),
+            x_tick_marks: vec![],
         }
     }
     pub fn color(mut self, color: iced::Color) -> Self {
@@ -55,6 +57,11 @@ impl<'a> Axis<'a> {
 
     pub fn scale(mut self, scale: Scale) -> Self {
         self.scale = scale;
+        self
+    }
+
+    pub fn x_tick_marks(mut self, x_tick_marks: Vec<f32>) -> Self {
+        self.x_tick_marks = x_tick_marks;
         self
     }
 
@@ -88,7 +95,7 @@ impl<'a> Axis<'a> {
             .map(|i| {
                 let pos = match self.scale {
                     Scale::Linear => i as f32 * tick_distance,
-                    Scale::Log => (self.ticks.amount as f32).powf(i as f32 / axis.max - 1.0),
+                    Scale::Log => ((i as f32 * tick_distance).log10() / length.log10()) * length,
                 };
 
                 let content = self
@@ -147,7 +154,46 @@ impl<'a> Axis<'a> {
                 .with_color(self.color),
         );
 
-        pos.into_iter().zip(labels).for_each(|(pos, label)| {
+        if self.x_tick_marks.is_empty() {
+            pos.into_iter().zip(labels).for_each(|(pos, label)| {
+                let pos = match self.alignment {
+                    Alignment::Horizontal => {
+                        iced::Point::new(plane.scale_to_cartesian_x(pos), start.y)
+                    }
+                    Alignment::Vertical => {
+                        iced::Point::new(start.x, plane.scale_to_cartesian_y(pos))
+                    }
+                };
+
+                Tick::new(pos).draw(frame, self.alignment, &self.ticks);
+                label.draw(frame, pos, self.alignment, &self.labels);
+            });
+        }
+
+        self.x_tick_marks.iter().for_each(|tm| {
+            let pos = match self.scale {
+                Scale::Linear => *tm as f32,
+                Scale::Log => {
+                    if *tm == 0.0 {
+                        0.0
+                    } else {
+                        (tm.log10() / axis.max.log10()) * axis.max
+                    }
+                }
+            };
+
+            let content = self
+                .labels
+                .format
+                .map_or_else(|| format!("{}", tm), |fmt| fmt(&tm));
+
+            let label = Label::new(
+                content,
+                self.labels
+                    .font_size
+                    .unwrap_or_else(|| Labels::DEFAULT_FONT_SIZE.into()),
+            );
+
             let pos = match self.alignment {
                 Alignment::Horizontal => iced::Point::new(plane.scale_to_cartesian_x(pos), start.y),
                 Alignment::Vertical => iced::Point::new(start.x, plane.scale_to_cartesian_y(pos)),

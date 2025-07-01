@@ -23,13 +23,14 @@ struct App {
 
 impl App {
     pub fn new() -> (Self, Task<Message>) {
-        let data = (1..=100_000)
-            .into_iter()
-            .map(|x| {
-                let x = x as f32;
-                (x.log10(), x)
-            })
-            .collect();
+        let data = vec![
+            (20.0, 10.0),
+            (50.0, 20.0),
+            (100.0, 50.0),
+            (1000.0, 30.0),
+            (10_000.0, 50.0),
+            (20_000.0, 20.0),
+        ];
 
         (Self { data }, Task::none())
     }
@@ -48,9 +49,19 @@ impl App {
             Chart::<_, ()>::new()
                 .width(Length::Fill)
                 .height(Length::Fill)
-                .x_axis(Axis::new(axis::Alignment::Horizontal).scale(axis::Scale::Log))
-                .x_labels(Labels::default().format(&|v| format!("{:.2}", v)))
-                .y_range(-5000.0..=100_000.0)
+                .x_axis(
+                    Axis::new(axis::Alignment::Horizontal)
+                        .scale(axis::Scale::Log)
+                        .x_tick_marks(
+                            [0, 20, 50, 100, 1000, 10_000, 20_000]
+                                .into_iter()
+                                .map(|v| v as f32)
+                                .collect(),
+                        ),
+                )
+                .x_range(20.0..=22_500.0)
+                .x_labels(Labels::default().format(&|v| format!("{:.0}", v)))
+                .y_range(0.0..=50.0)
                 .push_series(line_series(self.data.clone()).color(palette.text)),
         )
         .into()

@@ -46,29 +46,5 @@ impl Tick {
                 .with_width(ticks.width)
                 .with_color(ticks.color),
         );
-
-        // let label = match self.alignment {
-        //     Alignment::Horizontal => 10_f32.powf(x),
-        //     Alignment::Vertical => y,
-        // };
-
-        // let (align_x, align_y) = match self.alignment {
-        //     Alignment::Horizontal => (text::Alignment::Center, alignment::Vertical::Top),
-        //     Alignment::Vertical => (text::Alignment::Right, alignment::Vertical::Center),
-        // };
-
-        // frame.fill_text(canvas::Text {
-        //     content: label,
-        //     size: self.label.font_size.unwrap_or(12.into()),
-        //     position: Point {
-        //         x: x_scaled,
-        //         y: y_scaled,
-        //     },
-        //     color: self.label.color.unwrap_or(iced::Color::WHITE),
-        //     align_x,
-        //     align_y,
-        //     font: Font::MONOSPACE,
-        //     ..canvas::Text::default()
-        // });
     }
 }
