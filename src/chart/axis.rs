@@ -19,7 +19,7 @@ pub struct Axis<'a> {
     width: f32,
     labels: Labels<'a>,
     ticks: Ticks,
-    x_tick_marks: Vec<f32>,
+    tick_marks: Vec<f32>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -42,7 +42,7 @@ impl<'a> Axis<'a> {
             width: 1.0,
             labels: Labels::default(),
             ticks: Ticks::default(),
-            x_tick_marks: vec![],
+            tick_marks: vec![],
         }
     }
     pub fn color(mut self, color: iced::Color) -> Self {
@@ -61,7 +61,7 @@ impl<'a> Axis<'a> {
     }
 
     pub fn x_tick_marks(mut self, x_tick_marks: Vec<f32>) -> Self {
-        self.x_tick_marks = x_tick_marks;
+        self.tick_marks = x_tick_marks;
         self
     }
 
@@ -76,7 +76,6 @@ impl<'a> Axis<'a> {
         let mut start = plane.scale_to_cartesian(start);
         let mut end = plane.scale_to_cartesian(end);
 
-        // ticks
         let length = match self.alignment {
             Alignment::Horizontal => plane.x.length,
             Alignment::Vertical => plane.y.length,
@@ -86,22 +85,37 @@ impl<'a> Axis<'a> {
             Alignment::Vertical => &plane.y,
         };
 
-        let tick_distance = length / self.ticks.amount as f32;
-        let start_tick = (axis.min / tick_distance).ceil() as i32;
-        let end_tick = (axis.max / tick_distance).floor() as i32;
-        let (pos, labels): (Vec<_>, Vec<_>) = (start_tick..0)
+        let tick_positions: &mut dyn Iterator<Item = f32> = if self.tick_marks.is_empty() {
+            let tick_distance = length / self.ticks.amount as f32;
+            let start_tick = (axis.min / tick_distance).ceil() as i32;
+            let end_tick = (axis.max / tick_distance).floor() as i32;
+
+            &mut (start_tick..0)
+                .into_iter()
+                .chain(1..=end_tick)
+                .map(move |i| i as f32 * tick_distance)
+        } else {
+            &mut self.tick_marks.iter().copied()
+        };
+
+        let (pos, labels): (Vec<_>, Vec<_>) = tick_positions
             .into_iter()
-            .chain(1..=end_tick)
-            .map(|i| {
-                let pos = match self.scale {
-                    Scale::Linear => i as f32 * tick_distance,
-                    Scale::Log => ((i as f32 * tick_distance).log10() / length.log10()) * length,
+            .map(|position| {
+                let position = match self.scale {
+                    Scale::Linear => position,
+                    Scale::Log => {
+                        if position == 0.0 {
+                            0.0
+                        } else {
+                            (position.log10() / axis.max.log10()) * axis.max
+                        }
+                    }
                 };
 
                 let content = self
                     .labels
                     .format
-                    .map_or_else(|| format!("{}", pos), |fmt| fmt(&pos));
+                    .map_or_else(|| format!("{}", position), |fmt| fmt(&position));
 
                 let label = Label::new(
                     content,
@@ -110,7 +124,7 @@ impl<'a> Axis<'a> {
                         .unwrap_or_else(|| Labels::DEFAULT_FONT_SIZE.into()),
                 );
 
-                (pos, label)
+                (position, label)
             })
             .collect();
 
@@ -154,46 +168,7 @@ impl<'a> Axis<'a> {
                 .with_color(self.color),
         );
 
-        if self.x_tick_marks.is_empty() {
-            pos.into_iter().zip(labels).for_each(|(pos, label)| {
-                let pos = match self.alignment {
-                    Alignment::Horizontal => {
-                        iced::Point::new(plane.scale_to_cartesian_x(pos), start.y)
-                    }
-                    Alignment::Vertical => {
-                        iced::Point::new(start.x, plane.scale_to_cartesian_y(pos))
-                    }
-                };
-
-                Tick::new(pos).draw(frame, self.alignment, &self.ticks);
-                label.draw(frame, pos, self.alignment, &self.labels);
-            });
-        }
-
-        self.x_tick_marks.iter().for_each(|tm| {
-            let pos = match self.scale {
-                Scale::Linear => *tm as f32,
-                Scale::Log => {
-                    if *tm == 0.0 {
-                        0.0
-                    } else {
-                        (tm.log10() / axis.max.log10()) * axis.max
-                    }
-                }
-            };
-
-            let content = self
-                .labels
-                .format
-                .map_or_else(|| format!("{}", tm), |fmt| fmt(&tm));
-
-            let label = Label::new(
-                content,
-                self.labels
-                    .font_size
-                    .unwrap_or_else(|| Labels::DEFAULT_FONT_SIZE.into()),
-            );
-
+        pos.into_iter().zip(labels).for_each(|(pos, label)| {
             let pos = match self.alignment {
                 Alignment::Horizontal => iced::Point::new(plane.scale_to_cartesian_x(pos), start.y),
                 Alignment::Vertical => iced::Point::new(start.x, plane.scale_to_cartesian_y(pos)),
