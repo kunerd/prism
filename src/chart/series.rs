@@ -10,12 +10,18 @@ use super::{
     items,
 };
 
-use iced::widget::canvas::{self};
+use iced::{
+    advanced::graphics::geometry,
+    widget::canvas::{self},
+};
 
 use std::ops::RangeInclusive;
 
-pub trait Series<SeriesId, ItemId = usize> {
-    fn draw(&self, frame: &mut canvas::Frame, plane: &Plane, x_scale: &axis::Scale);
+pub trait Series<SeriesId, Renderer, ItemId = usize>
+where
+    Renderer: geometry::Renderer,
+{
+    fn draw(&self, frame: &mut canvas::Frame<Renderer>, plane: &Plane, x_scale: &axis::Scale);
     fn id(&self) -> Option<SeriesId> {
         None
     }

@@ -1,7 +1,7 @@
 use std::ops::RangeInclusive;
 
 use iced::{
-    Color, Point,
+    Color, Point, Renderer,
     widget::canvas::{self, Path, Stroke},
 };
 
@@ -92,7 +92,7 @@ where
     }
 }
 
-impl<Id, Item, Data> Series<Id> for PointSeries<'_, Id, Item, Data>
+impl<Id, Item, Data> Series<Id, Renderer> for PointSeries<'_, Id, Item, Data>
 where
     Id: Clone,
     Data: IntoIterator<Item = Item> + Clone,

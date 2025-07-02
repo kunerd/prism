@@ -3,6 +3,8 @@ mod cartesian;
 mod items;
 
 pub mod series;
+use iced::advanced;
+use iced::advanced::graphics::geometry;
 pub use series::{line_series, point_series};
 
 pub use axis::Axis;
@@ -15,25 +17,26 @@ use core::f32;
 
 use cartesian::Plane;
 use iced::Point;
-use iced::advanced::Renderer as _;
-use iced::advanced::graphics::geometry::Renderer as _;
+// use iced::advanced::Renderer as _;
+// use iced::advanced::graphics::geometry::Renderer as _;
 use iced::advanced::widget::{Tree, tree};
 use iced::advanced::{Clipboard, Layout, Shell, Widget, layout, mouse, renderer};
 use iced::mouse::ScrollDelta;
 use iced::widget::canvas::{self};
 use iced::widget::text::Shaping;
 use iced::{Element, Length, Rectangle, Size, mouse::Cursor};
-use iced::{Renderer, Vector, touch};
+use iced::{Vector, touch};
 
 use std::marker::PhantomData;
 use std::ops::RangeInclusive;
 
 type StateFn<'a, Message, Id> = Box<dyn Fn(&State<Id>) -> Message + 'a>;
 
-pub struct Chart<'a, Message, Id, Theme = iced::Theme>
+pub struct Chart<'a, Message, Id, Theme = iced::Theme, Renderer = iced::Renderer>
 where
     Message: Clone,
     Id: Clone,
+    Renderer: geometry::Renderer,
 {
     width: Length,
     height: Length,
@@ -54,8 +57,8 @@ where
 
     items: Items<Id, usize>,
 
-    series: Vec<Box<dyn series::Series<Id> + 'a>>,
-    cache: Cache<'a>,
+    series: Vec<Box<dyn series::Series<Id, Renderer> + 'a>>,
+    cache: Cache<'a, Renderer>,
 
     on_move: Option<StateFn<'a, Message, Id>>,
     on_press: Option<StateFn<'a, Message, Id>>,
@@ -72,15 +75,19 @@ where
     theme_: PhantomData<Theme>,
 }
 
-enum Cache<'a> {
-    User(&'a canvas::Cache),
-    Fallback(canvas::Cache),
+enum Cache<'a, Renderer>
+where
+    Renderer: geometry::Renderer,
+{
+    User(&'a canvas::Cache<Renderer>),
+    Fallback(canvas::Cache<Renderer>),
 }
 
-impl<'a, Message, Id, Theme> Chart<'a, Message, Id, Theme>
+impl<'a, Message, Id, Theme, Renderer> Chart<'a, Message, Id, Theme, Renderer>
 where
     Message: Clone,
     Id: Clone,
+    Renderer: geometry::Renderer,
 {
     const X_RANGE_DEFAULT: RangeInclusive<f32> = 0.0..=10.0;
     const Y_RANGE_DEFAULT: RangeInclusive<f32> = 0.0..=10.0;
@@ -184,12 +191,12 @@ where
         self
     }
 
-    pub fn cache(mut self, cache: &'a canvas::Cache) -> Self {
+    pub fn cache(mut self, cache: &'a canvas::Cache<Renderer>) -> Self {
         self.cache = Cache::User(cache);
         self
     }
 
-    pub fn push_series(mut self, series: impl series::Series<Id> + 'a) -> Self {
+    pub fn push_series(mut self, series: impl series::Series<Id, Renderer> + 'a) -> Self {
         if let Some((id, items)) = series.items() {
             self.items.add_series(id, &items);
         }
@@ -200,7 +207,7 @@ where
 
     pub fn extend_series(
         self,
-        series_list: impl IntoIterator<Item = impl series::Series<Id> + 'a>,
+        series_list: impl IntoIterator<Item = impl series::Series<Id, Renderer> + 'a>,
     ) -> Self {
         series_list.into_iter().fold(self, Self::push_series)
     }
@@ -225,7 +232,7 @@ where
         self
     }
 
-    fn draw_data(&self, frame: &mut canvas::Frame, plane: &Plane) {
+    fn draw_data(&self, frame: &mut canvas::Frame<Renderer>, plane: &Plane) {
         for series in &self.series {
             series.draw(frame, plane, &self.x_axis.scale);
         }
@@ -272,10 +279,12 @@ where
     }
 }
 
-impl<Message, Id, Theme> Widget<Message, Theme, Renderer> for Chart<'_, Message, Id, Theme>
+impl<Message, Id, Theme, Renderer> Widget<Message, Theme, Renderer>
+    for Chart<'_, Message, Id, Theme, Renderer>
 where
     Message: Clone,
     Id: 'static + Clone + PartialEq,
+    Renderer: advanced::Renderer + geometry::Renderer,
 {
     fn size(&self) -> Size<Length> {
         Size::new(self.width, self.height)
@@ -334,7 +343,6 @@ where
         node
     }
 
-    #[inline]
     fn draw(
         &self,
         tree: &Tree,
@@ -553,13 +561,17 @@ where
     }
 }
 
-impl<'a, Message, Id, Theme> From<Chart<'a, Message, Id, Theme>> for Element<'a, Message, Theme>
+impl<'a, Message, Id, Theme, Renderer> From<Chart<'a, Message, Id, Theme, Renderer>>
+    for Element<'a, Message, Theme, Renderer>
 where
     Message: 'a + Clone,
     Theme: 'a,
     Id: 'static + Clone + PartialEq,
+    Renderer: 'a + advanced::Renderer + geometry::Renderer,
 {
-    fn from(chart: Chart<'a, Message, Id, Theme>) -> Element<'a, Message, Theme, Renderer> {
+    fn from(
+        chart: Chart<'a, Message, Id, Theme, Renderer>,
+    ) -> Element<'a, Message, Theme, Renderer> {
         Element::new(chart)
     }
 }

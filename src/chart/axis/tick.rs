@@ -1,4 +1,7 @@
-use iced::widget::canvas::{Frame, Path, Stroke};
+use iced::{
+    advanced::graphics::geometry,
+    widget::canvas::{Frame, Path, Stroke},
+};
 
 use super::{Alignment, Ticks};
 
@@ -11,7 +14,12 @@ impl Tick {
         Self { position }
     }
 
-    pub fn draw(&self, frame: &mut Frame, alignment: Alignment, ticks: &Ticks) {
+    pub fn draw<Renderer: geometry::Renderer>(
+        &self,
+        frame: &mut Frame<Renderer>,
+        alignment: Alignment,
+        ticks: &Ticks,
+    ) {
         let half_tick_length = ticks.length / 2.0;
 
         let (x_start, x_end) = match alignment {

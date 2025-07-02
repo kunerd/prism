@@ -6,6 +6,7 @@ use super::Series;
 
 use iced::{
     Color, Point, Vector,
+    advanced::graphics::geometry,
     widget::canvas::{self, Path, Stroke, path::lyon_path::geom::euclid::Transform2D},
 };
 
@@ -29,12 +30,13 @@ impl<Data> LineSeries<Data> {
     }
 }
 
-impl<Id, Data> Series<Id> for LineSeries<Data>
+impl<Id, Renderer, Data> Series<Id, Renderer> for LineSeries<Data>
 where
     Data: IntoIterator + Clone,
     Data::Item: Into<(f32, f32)>,
+    Renderer: geometry::Renderer,
 {
-    fn draw(&self, frame: &mut canvas::Frame, plane: &Plane, x_scale: &axis::Scale) {
+    fn draw(&self, frame: &mut canvas::Frame<Renderer>, plane: &Plane, x_scale: &axis::Scale) {
         frame.with_save(|frame| {
             frame.translate(Vector::new(plane.x.margin_min, plane.x.margin_min));
             frame.scale_nonuniform(Vector::new(plane.x.scale, plane.y.scale));

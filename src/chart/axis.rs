@@ -10,7 +10,10 @@ pub use ticks::Ticks;
 
 use super::cartesian::Plane;
 
-use iced::widget::canvas::{self, Path, Stroke};
+use iced::{
+    advanced::graphics::geometry,
+    widget::canvas::{self, Path, Stroke},
+};
 
 pub struct Axis<'a> {
     pub scale: Scale,
@@ -66,7 +69,11 @@ impl<'a> Axis<'a> {
         self
     }
 
-    pub(super) fn draw(&self, frame: &mut canvas::Frame, plane: &Plane) {
+    pub(super) fn draw<Renderer: geometry::Renderer>(
+        &self,
+        frame: &mut canvas::Frame<Renderer>,
+        plane: &Plane,
+    ) {
         let bounds = frame.size();
 
         let (start, end) = match self.alignment {

@@ -1,7 +1,7 @@
 use iced::{
     Font, Pixels,
     advanced::{
-        graphics::text::Paragraph,
+        graphics::{geometry, text::Paragraph},
         text::{self, Paragraph as _},
     },
     alignment,
@@ -34,9 +34,9 @@ impl<'a> Label<'a> {
         self.bounds.height
     }
 
-    pub(crate) fn draw(
+    pub(crate) fn draw<Renderer: geometry::Renderer>(
         &self,
-        frame: &mut Frame,
+        frame: &mut Frame<Renderer>,
         pos: iced::Point,
         alignment: Alignment,
         config: &Labels,
