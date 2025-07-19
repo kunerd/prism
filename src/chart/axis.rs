@@ -11,8 +11,9 @@ pub use ticks::Ticks;
 use super::cartesian::Plane;
 
 use iced::{
+    Point, Size,
     advanced::graphics::geometry,
-    widget::canvas::{self, Path, Stroke},
+    widget::canvas::{self, Fill, Path, Stroke},
 };
 
 pub struct Axis<'a> {
@@ -99,7 +100,6 @@ impl<'a> Axis<'a> {
             let end_tick = (axis.max / tick_distance).floor() as i32;
 
             &mut (start_tick..0)
-                .into_iter()
                 .chain(1..=end_tick)
                 .map(move |i| i as f32 * tick_distance)
         } else {
@@ -148,6 +148,7 @@ impl<'a> Axis<'a> {
             .unwrap();
         let max_label_height = max_label_height.min_height();
 
+        let mut clamped = false;
         match self.alignment {
             Alignment::Horizontal => {
                 if start.y <= 0.0 + self.ticks.length {
@@ -156,12 +157,14 @@ impl<'a> Axis<'a> {
                 } else if start.y >= bounds.height - max_label_height {
                     start.y = bounds.height - max_label_height;
                     end.y = bounds.height - max_label_height;
+                    clamped = true;
                 }
             }
             Alignment::Vertical => {
                 if start.x - max_label_width <= 0.0 {
                     start.x = max_label_width + self.width;
                     end.x = max_label_width + self.width;
+                    clamped = true;
                 } else if start.x >= bounds.width - self.ticks.length {
                     start.x = bounds.width - self.ticks.length;
                     end.x = bounds.width - self.ticks.length;
@@ -185,6 +188,20 @@ impl<'a> Axis<'a> {
             Tick::new(pos).draw(frame, self.alignment, &self.ticks);
             label.draw(frame, pos, self.alignment, &self.labels);
         });
+
+        match (self.alignment, clamped) {
+            (Alignment::Horizontal, true) => {
+                frame.fill_rectangle(start, Size::new(end.x, max_label_height), Fill::default());
+            }
+            (Alignment::Vertical, true) => {
+                frame.fill_rectangle(
+                    Point::new(start.x - max_label_width - self.width, end.y),
+                    Size::new(max_label_width, start.y),
+                    Fill::default(),
+                );
+            }
+            (_, false) => {}
+        };
     }
 
     pub(crate) fn labels(&mut self, labels: Labels<'a>) {
