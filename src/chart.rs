@@ -304,7 +304,7 @@ where
 
     #[inline]
     fn layout(
-        &self,
+        &mut self,
         tree: &mut Tree,
         _renderer: &Renderer,
         limits: &layout::Limits,

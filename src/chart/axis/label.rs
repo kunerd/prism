@@ -64,7 +64,7 @@ fn min_bounds(content: &str, font_size: Pixels) -> iced::Size {
         content,
         size: font_size,
         line_height: text::LineHeight::default(),
-        bounds: iced::Size::INFINITY,
+        bounds: iced::Size::INFINITE,
         font: Font::MONOSPACE,
         align_x: iced::advanced::text::Alignment::Right,
         align_y: alignment::Vertical::Center,
