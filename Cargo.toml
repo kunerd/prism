@@ -13,8 +13,6 @@ edition = "2024"
 ordered-float = "1.0"
 
 [dependencies.iced]
-version = "0.14.0-dev"
-features = ["canvas", "advanced"]
-
-[patch.crates-io]
-iced = { git = "https://github.com/iced-rs/iced.git", branch = "master" }
+version = "0.14"
+default-features = false
+features = ["canvas", "advanced", "x11", "thread-pool", "wgpu"]
